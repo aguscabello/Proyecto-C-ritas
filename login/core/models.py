@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 import secrets
 
+from django.conf import settings
 
 # Create your models here.
 
@@ -28,7 +29,9 @@ class Usuario(AbstractUser):
     last_login = models.DateTimeField(verbose_name='last login', blank=True, null=True)
     tipo= models.CharField(max_length=30, default="")
     puntuacion = models.DecimalField(max_digits=10, decimal_places=2)
+    puntos = models.IntegerField(default=0)  
 
+    fecha = models.DateTimeField(null=True, blank=True) #para las estadisticas
     # Campo filial solo para ayudantes
     filial_nombre = models.CharField(max_length=100, null=True, blank=True)
 
@@ -49,11 +52,13 @@ class porDesbloquear(models.Model):
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     estado = models.BooleanField(default=True)
+    puntuacion = models.IntegerField(default=0)  # Nuevo campo añadido
+
     def __str__(self):
         return self.nombre
 
 
-
+#EL STOCK PARA DISTINGUIRLAS DE PUBLIC NORMALES EN -1
 class Publicacion(models.Model):
     titulo = models.CharField(max_length=200)
     descripcion = models.CharField(max_length=400)
@@ -64,7 +69,7 @@ class Publicacion(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, default=True)
     imagen = models.ImageField(upload_to='media/publicaciones/', null=True, blank=True)
     trueque = models.BooleanField(default=False)
-    stock =models.IntegerField(default=0)
+    stock =models.IntegerField(default=-1)
 
     def __str__(self):
         return self.titulo
@@ -90,6 +95,13 @@ class Turno(models.Model):
         super(Turno, self).save(*args, **kwargs)
 
 class Trueque(models.Model):
+    ESTADO_CHOICES = [
+        ('aceptado', 'Aceptado'),
+        ('penalizado', 'Penalizado'),
+        ('rechazado', 'Rechazado'),
+        ('pendiente', 'Pendiente'), 
+    ]
+    estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='pendiente')#es para las estadisticas de trueques 
     solicitante = models.ForeignKey(Usuario, related_name='solicitante', on_delete=models.CASCADE)
     receptor = models.ForeignKey(Usuario, related_name='receptor', on_delete=models.CASCADE)
     turno = models.ForeignKey(Turno, on_delete=models.SET_NULL, null=True, blank=True)
@@ -134,4 +146,52 @@ class Solicitud(models.Model):
         self.publicacion.save()
         self.publicacionOfrecida.save()
         self.save()  
+
+
+class Canje(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE)
+    estado = models.BooleanField(default=False)
+    codigo_retiro = models.CharField(max_length=20, default='')
+
+
+
+class Valoracion(models.Model):
+    ESTRELLAS_CHOICES = [
+        (1, '1 estrella'),
+        (2, '2 estrellas'),
+        (3, '3 estrellas'),
+        (4, '4 estrellas'),
+        (5, '5 estrellas'),
+    ]
+
+    trueque = models.ForeignKey(Trueque, on_delete=models.CASCADE, related_name='valoraciones')
+    solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='valoraciones')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    estrellas = models.IntegerField(choices=ESTRELLAS_CHOICES)
+    comentario = models.TextField(blank=True, null=True)
+    fecha_valoracion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.trueque} - {self.usuario} - {self.estrellas} estrellas'
     
+class BusquedaFavorita(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    termino_busqueda = models.CharField(max_length=255)
+    fecha_guardada = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('usuario', 'termino_busqueda')
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.termino_busqueda}"
+
+
+class Donation(models.Model):
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20)    
+    date = models.DateTimeField(default=timezone.now)
+    preference_id = models.CharField(max_length=100, unique=True, null=True)
+
+    def __str__(self):
+        return f"Donation {self.id} - {self.monto} - {self.status}"

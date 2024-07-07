@@ -44,39 +44,7 @@
     width: 100%; /* Ajustar la imagen al 100% del contenedor */
     height: auto; /* Mantener la proporción de la imagen */
 }
-.filtro-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .filtro-container form {
-            display: flex;
-            align-items: center;
-            width: 100%;
-            flex-wrap: wrap;
-            justify-content: space-between;
-        }
-        .filtro-section {
-            display: flex;
-            align-items: center;
-            margin-right: 10px;
-            flex-grow: 1;
-        }
-        .filtro-container label {
-            font-weight: bold;
-            font-size: 20px;
-            color: #333;
-            margin-right: 10px;
-        }
-        .filtro-container select {
-            padding: 5px;
-            font-size: 16px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
+
 
 
    </style>
@@ -95,18 +63,39 @@
                         {% endblock button %}
                     </div>
                 </div>
-                <div class="filtro-container">
-                    <form action="{% url 'filtro_publis' %}" method="GET">
-                        <div class="filtro-section">
-                            <label for="filtro">Filtrar:</label>
-                            <select id="filtro" name="filtro" onchange="this.form.submit()">
-                                <option value="publicacionesUsuarios" {% if filtro == 'publicacionesUsuarios' %} selected {% endif %}>Publicaciones Usuarios</option>
-                                <option value="publicacionesFundacion" {% if filtro == 'publicacionesFundacion' %} selected {% endif %}>Publicaciones Fundacion</option>
-                            </select>
-                          <!--  <button type="submit">Filtrar</button> -->
-                        </div>
-                    </form>
+
+              <!-- Barra de búsqueda , cambios -->
+<div class="row my-4">
+    <div class="col-12">
+        <form method="GET" action="{% url 'buscar_productos' %}" class="form-inline">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="busqueda-texto" 
+                    name="q" 
+                    class="form-control" 
+                    placeholder="Buscar productos..." 
+                    list="favoritas-list"
+                    aria-label="Buscar productos" 
+                    aria-describedby="boton-buscar"
+                    autocomplete="off"
+                />
+                <datalist id="favoritas-list">
+                    {% if favoritas %}
+                        {% for favorita in favoritas %}
+                            <option value="{{ favorita.termino_busqueda }}"></option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="No hay búsquedas favoritas" data-placeholder></option>
+                    {% endif %}
+                </datalist>
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="submit" id="boton-buscar">Buscar</button>
                 </div>
+            </div>
+        </form>
+    </div>
+</div>
 
                 <div class="album py-5 bg-body-tertiary">
                     <div class="container">
@@ -115,37 +104,25 @@
                                 {% for publicacion in publicaciones %}
                                     <div class="col">
                                         <div class="card shadow-sm">
-                                            {% if publicacion.stock == 0 %}
-                                            {% if publicacion.imagen %}
                                                 <img src="{{ publicacion.imagen.url }}" class="card-img-top" alt="{{ publicacion.titulo }}">
-                                            {% else %}
+                                                {% if not  publicacion.imagen.url %}
                                                 <img src="{% static 'placeholder_image.jpg' %}" class="card-img-top" alt="Imagen no disponible">
-                                            {% endif %}
-                                            {% endif %}
-                                            
+                                                {% endif %}
 
                                             <div class="card-body">
                                                 <h5 class="card-title"><strong>Titulo: </strong> {{ publicacion.titulo }}</h5>
                                                 <p class="card-text"><strong>Descripción: </strong> {{ publicacion.descripcion }}</p>
                                                 <p class="card-text"><strong>Categoria: </strong> {{ publicacion.categoria.nombre}}</p>
 
-                                                {% if publicacion.stock != 0 %}
-                                                <p><strong>Stock: </strong> {{publicacion.stock }}</p>
-                                                {% endif %}
 
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <h5 class="card-title mb-0">
-                                                        {% if publicacion.stock == 0 %}
                                                             <a href="{% url 'perfil_usuario' publicacion.usuario.id %}" class="btn btn-outline-primary" data-publicacion-id="{{ publicacion.usuario.id }}">Perfil publicante</a>
                                                         </h5>
                                                         {% if publicacion.id in publicaciones_solicitadas_ids %}
                                                             <button class="solicitado">Ya solicitada</button>
                                                         {% else %}
                                                             <a href="{% url 'solicitar_trueque' publicacion.id %}" class="btn btn-outline-primary solicitar-btn" data-publicacion-id="{{ publicacion.id }}">Solicitar trueque</a>
-                                                        {% endif %}
-                                                        {% else %}
-                                                            <a href="{% url 'solicitar_trueque' publicacion.id %}" class="btn btn-outline-primary solicitar-btn" data-publicacion-id="{{ publicacion.id }}">Solicitar producto</a>
-                                                            <!--hy q cambiar url obviamente -->
                                                         {% endif %}
                                                     </h5>
                                                 </div>
@@ -162,9 +139,12 @@
                                 </div>
                             {% endif %}
                         </div>
+
                     </div>
+
                 </div>
 
+                {% block error_modal %}
                 {% if messages %}
                     <div >
                         {% for message in messages %}
@@ -172,10 +152,29 @@
                         {% endfor %}
                     </div>
                     {% endif %}
+                {% endblock %}
 
 
                   
     </body>
     </html>
+   <!-- se agrego -->
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var input = document.getElementById('busqueda-texto');
+            var datalist = document.getElementById('favoritas-list');
+        
+            input.addEventListener('input', function() {
+                var selectedOption = datalist.querySelector(option[value="${input.value}"]);
+                if (selectedOption && selectedOption.hasAttribute('data-placeholder')) {
+                    input.value = '';
+                }
+            });
+        });
+        </script>
+
+
+
 {% endif %}
 {% endblock %}
